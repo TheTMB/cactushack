@@ -1,8 +1,8 @@
 # cactushack
 Участники:
-Александр Переверзев android-dev
-Тимофей Савицкий frontend-dev
-Владислав Яцун backend-dev
+Александр Переверзев android-dev, 
+Тимофей Савицкий frontend-dev, 
+Владислав Яцун backend-dev,
 Александр Мусаткин PM, iOS-dev, frontend-dev
 
 Идея проекта:
