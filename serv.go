@@ -88,7 +88,7 @@ func printErr(w http.ResponseWriter, err error) {
 }
 
 func main() {
-	//http.HandleFunc("/signup", handlerSignUp)
+	http.HandleFunc("/signup", handlerSignUp)
 	http.HandleFunc("/login", handlerLogIn)
 	http.ListenAndServe(":8080", nil)
 }
