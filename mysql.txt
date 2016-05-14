@@ -1,0 +1,31 @@
+CREATE TABLE Users
+(
+Id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+login varchar(255) NOT NULL,
+password varchar(255) NOT NULL,
+firstName varchar(255) NOT NULL,
+lastName varchar(255) NOT NULL,
+country varchar(255) NOT NULL,
+city varchar(255) NOT NULL,
+university varchar(255) NOT NULL,
+start_study BIGINT NOT NULL,
+end_study BIGINT NOT NULL,
+age INT NOT NULL,
+work varchar(255) NOT NULL,
+known_technology varchar(255) NOT NULL,
+about varchar(255) NOT NULL
+);
+
+CREATE TABLE Companies
+(
+Id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+login varchar(255) NOT NULL,
+password varchar(255) NOT NULL,
+firstName varchar(255) NOT NULL,
+lastName varchar(255) NOT NULL,
+country varchar(255) NOT NULL,
+city varchar(255) NOT NULL,
+phone varchar(255) NOT NULL,
+site_domain_address varchar(255) NOT NULL,
+description varchar(255) NOT NULL
+);
