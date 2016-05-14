@@ -170,8 +170,8 @@ func GetCompany(inputLogin string) (interface{}, int) {
 	return nil, 0
 }
 
-func GetCompanyByToken(token string) (interface{}, int) {
-	rows, err := db.Query("SELECT * FROM Users WHERE id=?", token)
+func GetCompanyByToken(token int) (interface{}, int) {
+	rows, err := db.Query("SELECT * FROM Companies WHERE id=?", token)
 	if st, err := checkDbErr(err); st {
 		return nil, err
 	}
@@ -186,9 +186,8 @@ func GetCompanyByToken(token string) (interface{}, int) {
 		var phone string
 		var site_domain_address string
 		var description string
-		var about string
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city, &phone,
-			&site_domain_address, &description, &about)); st {
+			&site_domain_address, &description)); st {
 			return nil, err
 		}
 		return company_st{ID, login, password, firstName, lastName, country, city, phone, site_domain_address, description}, 0

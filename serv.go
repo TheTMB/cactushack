@@ -33,6 +33,10 @@ type user_get_info_struct struct {
 	Token int
 }
 
+type company_get_info_struct struct {
+	Token int
+}
+
 type company_sign_up_struct struct {
 	ID                  int
 	Login               string
@@ -154,12 +158,13 @@ func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
 		printErr(w, err)
+		return
 	}
 
 	if (t.Token == 0) {
 		printErr(w, errors.New("token is empty"))
+		return
 	}
-	fmt.Print("token: " + t.Token)
 	user, e := GetUserByToken(t.Token);
 	if e != 0 || user == nil {
 		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
@@ -172,7 +177,11 @@ func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		jsonAnswer := fmt.Sprintf("{\"token\":\"%v\"}", u.ID)
+		jsonAnswer, err := json.Marshal(u)
+		if err != nil {
+			printErr(w, err)
+			return
+		}
 		w.Write([]byte(jsonAnswer))
 	}
 
@@ -214,6 +223,45 @@ func handlerSignUpCompany(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func handlerGetInfoCompany(w http.ResponseWriter, r *http.Request) {
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t company_get_info_struct
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for get compnay user %v", err)
+		printErr(w, err)
+		return
+	}
+
+	if (t.Token == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+	company, e := GetCompanyByToken(t.Token);
+	if e != 0 || company == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetCompany error %d", e)))
+		return
+	}
+	if (company != nil) {
+		c, ok := company.(company_st)
+		if !ok {
+			printErr(w, errors.New("can't cast to company_st"))
+			return
+		}
+
+		jsonAnswer, err := json.Marshal(c)
+		if err != nil {
+			printErr(w, err)
+			return
+		}
+		w.Write([]byte(jsonAnswer))
+	}
+}
+
+
 func printErr(w http.ResponseWriter, err error) {
 	if err != nil {
 		fmt.Printf("err with db: %v \n", err)
@@ -224,8 +272,10 @@ func printErr(w http.ResponseWriter, err error) {
 func main() {
 	http.HandleFunc("/user_signup", handlerSignUpUser)
 	http.HandleFunc("/user_signin", handlerSignInUser)
-	http.HandleFunc("/user_addInfo", handlerAddUserInfo)
-	http.HandleFunc("/user_getInfo", handlerGetInfoUser)
+	http.HandleFunc("/user_add_info", handlerAddUserInfo)
+	http.HandleFunc("/user_get_info", handlerGetInfoUser)
 	http.HandleFunc("/company_signup", handlerSignUpCompany)
+	http.HandleFunc("/company_get_info", handlerGetInfoCompany)
+	http.HandleFunc("/company_add_event", handlerGetInfoCompany)
 	http.ListenAndServe(":8080", nil)
 }

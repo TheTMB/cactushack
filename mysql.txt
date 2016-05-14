@@ -29,3 +29,14 @@ phone varchar(255) NOT NULL,
 site_domain_address varchar(255) NOT NULL,
 description varchar(255) NOT NULL
 );
+
+CREATE TABLE Events
+(
+Id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+name varchar(255) NOT NULL,
+description varchar(255) NOT NULL,
+start_event BIGINT NOT NULL,
+end_event BIGINT NOT NULL,
+company_id int NOT NULL
+);
+
