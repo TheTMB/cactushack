@@ -41,7 +41,7 @@ func handlerSignUp(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := CreateUser(user_st{Login:t.Login, Passsword:t.Password}); err != 0 {
+	if err := CreateUser(user_st{Login:t.Login, Password:t.Password}); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
@@ -71,7 +71,7 @@ func handlerLogIn(w http.ResponseWriter, r *http.Request) {
 			printErr(w, errors.New("can't cast to user_st"))
 			return
 		}
-		if ok && u.Passsword != t.Password {
+		if ok && u.Password != t.Password {
 			printErr(w, errors.New("wrong password"))
 			return
 		}
@@ -88,7 +88,7 @@ func printErr(w http.ResponseWriter, err error) {
 }
 
 func main() {
-	http.HandleFunc("/signup", handlerSignUp)
+	//http.HandleFunc("/signup", handlerSignUp)
 	http.HandleFunc("/login", handlerLogIn)
 	http.ListenAndServe(":8080", nil)
 }

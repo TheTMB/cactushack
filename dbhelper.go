@@ -9,9 +9,9 @@ import (
 var db *sql.DB;
 
 type user_st struct {
-	ID        int
-	Login     string
-	Passsword string
+	ID       int
+	Login    string
+	Password string
 }
 
 func SetUp() int {
@@ -40,22 +40,22 @@ func GetUser(inputLogin string) (interface{}, int) {
 	if rows.Next() {
 		var ID int
 		var login string
-		var passsword string
-		if st, err := checkDbErr(rows.Scan(&ID, &login, &passsword)); st {
+		var password string
+		if st, err := checkDbErr(rows.Scan(&ID, &login, &password)); st {
 			return nil, err
 		}
-		return user_st{ID, login, passsword}, 0
+		return user_st{ID, login, password}, 0
 	}
 	return nil, 0
 }
 
 func CreateUser(user user_st) (err int) {
-	stmt, error := db.Prepare("insert Users SET login=?, passsword=?")
+	stmt, error := db.Prepare("insert Users SET login=?, password=?")
 	if st, err := checkDbErr(error); st {
 		return err;
 	}
 
-	if _, err := stmt.Exec(user.Login, user.Passsword); err != nil {
+	if _, err := stmt.Exec(user.Login, user.Password); err != nil {
 		if st, e := checkDbErr(err); st {
 			return e
 		}
