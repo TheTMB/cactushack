@@ -110,6 +110,25 @@ func handlerSignUpUser(w http.ResponseWriter, r *http.Request) {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
+
+	userIn, e := GetUser(t.Login);
+	if e != 0 || userIn == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
+		return
+	}
+	if (userIn != nil) {
+		u, ok := userIn.(user_st)
+		if !ok {
+			printErr(w, errors.New("can't cast to user_st"))
+			return
+		}
+		if ok && u.Password != t.Password {
+			printErr(w, errors.New("wrong password"))
+			return
+		}
+		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_u\", \"login\":\"%v\"}", u.ID, u.Login)
+		w.Write([]byte(jsonAnswer))
+	}
 }
 
 func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
