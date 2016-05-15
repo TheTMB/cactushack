@@ -26,7 +26,7 @@ type user_st struct {
 }
 
 type company_st struct {
-	Id                  int
+	ID                  int
 	Login               string
 	Password            string
 	FirstName           string
@@ -37,6 +37,17 @@ type company_st struct {
 	Site_domain_address string
 	Description         string
 }
+
+type company_event_st struct {
+	ID          int
+	Name        string
+	Description string
+	Start_event int64
+	End_event   int64
+	Token       int
+}
+
+type company_event_list_st map[string][]company_event_st
 
 func SetUp() int {
 	var err error;
@@ -144,6 +155,22 @@ func UpdateUser(user user_st) (err int) {
 	return 0
 }
 
+func CreateCompany(company company_st) (err int) {
+	stmt, error := db.Prepare("insert Companies SET login=?, password=?, firstName=?, lastName=?, country=?, city=?, " +
+	"phone=?, site_domain_address=?, description=?")
+	if st, err := checkDbErr(error); st {
+		return err;
+	}
+
+	if _, err := stmt.Exec(company.Login, company.Password, company.FirstName, company.LastName, company.Country, company.City,
+		company.Phone, company.Site_domain_address, company.Description); err != nil {
+		if st, e := checkDbErr(err); st {
+			return e
+		}
+	}
+	return 0
+}
+
 func GetCompany(inputLogin string) (interface{}, int) {
 	rows, err := db.Query("SELECT * FROM Companies WHERE login=?", inputLogin)
 	if st, err := checkDbErr(err); st {
@@ -160,9 +187,8 @@ func GetCompany(inputLogin string) (interface{}, int) {
 		var phone string
 		var site_domain_address string
 		var description string
-		var about string
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city, &phone,
-			&site_domain_address, &description, &about)); st {
+			&site_domain_address, &description)); st {
 			return nil, err
 		}
 		return company_st{ID, login, password, firstName, lastName, country, city, phone, site_domain_address, description}, 0
@@ -195,18 +221,70 @@ func GetCompanyByToken(token int) (interface{}, int) {
 	return nil, 0
 }
 
-func CreateCompany(company company_st) (err int) {
-	stmt, error := db.Prepare("insert Companies SET login=?, password=?, firstName=?, lastName=?, country=?, city=?, " +
-	"phone=?, site_domain_address=?, description=?")
+func CreateEvent(event company_event_st) (err int) {
+	stmt, error := db.Prepare("insert Events SET name=?, description=?, start_event=?, end_event=?, company_id=?");
 	if st, err := checkDbErr(error); st {
 		return err;
 	}
 
-	if _, err := stmt.Exec(company.Login, company.Password, company.FirstName, company.LastName, company.Country, company.City,
-		company.Phone, company.Site_domain_address, company.Description); err != nil {
+	if _, err := stmt.Exec(event.Name, event.Description, event.Start_event, event.End_event, event.Token); err != nil {
 		if st, e := checkDbErr(err); st {
 			return e
 		}
 	}
 	return 0
+}
+
+func GetEvents() (company_event_list_st, int) {
+	rows, err := db.Query("SELECT * FROM Events")
+	if st, err := checkDbErr(err); st {
+		return nil, err
+	}
+	var results []company_event_st
+	for rows.Next() {
+		var ID int
+		var name string
+		var description string
+		var start_event int64
+		var end_event int64
+		var company_id int
+		if st, err := checkDbErr(rows.Scan(&ID, &name, &description, &start_event, &end_event, &company_id)); st {
+			return nil, err
+		}
+		results = append(results, company_event_st{ID, name, description, start_event, end_event, company_id})
+	}
+	if len(results) > 0 {
+		jsonFormatRes := company_event_list_st{
+			"events":results,
+		}
+		return jsonFormatRes, 0
+	}
+	return nil, 0
+}
+
+func GetEventsByCompany(token int) (company_event_list_st, int) {
+	rows, err := db.Query("SELECT * FROM Events where company_id=?", token)
+	if st, err := checkDbErr(err); st {
+		return nil, err
+	}
+	var results []company_event_st
+	for rows.Next() {
+		var ID int
+		var name string
+		var description string
+		var start_event int64
+		var end_event int64
+		var company_id int
+		if st, err := checkDbErr(rows.Scan(&ID, &name, &description, &start_event, &end_event, &company_id)); st {
+			return nil, err
+		}
+		results = append(results, company_event_st{ID, name, description, start_event, end_event, company_id})
+	}
+	if len(results) > 0 {
+		jsonFormatRes := company_event_list_st{
+			"events":results,
+		}
+		return jsonFormatRes, 0
+	}
+	return nil, 0
 }

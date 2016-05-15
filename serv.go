@@ -7,15 +7,21 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"errors"
+	"strconv"
 )
 
-type user_sign_up_struct struct {
+type user_sign_struct struct {
+	Login    string
+	Password string
+}
+
+type company_sign_struct struct {
 	Login    string
 	Password string
 }
 
 type user_add_info_struct struct {
-	Token            int
+	Token            string
 	FirstName        string
 	LastName         string
 	Country          string
@@ -29,12 +35,16 @@ type user_add_info_struct struct {
 	About            string
 }
 
-type user_get_info_struct struct {
-	Token int
+type user_access struct {
+	Token string
 }
 
-type company_get_info_struct struct {
-	Token int
+type company_access struct {
+	Token string
+}
+
+type company_get_events struct {
+	Company_id int
 }
 
 type company_sign_up_struct struct {
@@ -50,12 +60,22 @@ type company_sign_up_struct struct {
 	Description         string
 }
 
+type company_add_event_struct struct {
+	Name        string
+	Description string
+	Start_event int64
+	End_event   int64
+	Company_id  string
+	Token       string
+}
+
 func handlerSignUpUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t user_sign_up_struct
+	var t user_sign_struct
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
@@ -81,16 +101,15 @@ func handlerSignUpUser(w http.ResponseWriter, r *http.Request) {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t user_sign_up_struct
+	var t user_sign_struct
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
@@ -112,12 +131,13 @@ func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
 			printErr(w, errors.New("wrong password"))
 			return
 		}
-		jsonAnswer := fmt.Sprintf("{\"token\":\"%v\"}", u.ID)
+		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_u\"}", u.ID)
 		w.Write([]byte(jsonAnswer))
 	}
 }
 
 func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
@@ -129,17 +149,27 @@ func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
 		printErr(w, err)
 	}
 
-	if (t.Token == 0) {
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
+		return
+	}
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+		return
+	}
+	if (token == 0) {
 		printErr(w, errors.New("token is empty"))
+		return
 	}
 
-	user, e := GetUserByToken(t.Token);
+	user, e := GetUserByToken(token);
 	if e != 0 || user == nil {
 		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
 		return
 	}
 
-	if err := UpdateUser(user_st{t.Token, "", "", t.FirstName, t.LastName, t.Country, t.City, t.University, t.Start_study, t.End_study,
+	if err := UpdateUser(user_st{token, "", "", t.FirstName, t.LastName, t.Country, t.City, t.University, t.Start_study, t.End_study,
 		t.Age, t.Work, t.Known_technology, t.About}); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
@@ -149,11 +179,12 @@ func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t user_get_info_struct
+	var t user_access
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
@@ -161,11 +192,15 @@ func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (t.Token == 0) {
-		printErr(w, errors.New("token is empty"))
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
 		return
 	}
-	user, e := GetUserByToken(t.Token);
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+	}
+	user, e := GetUserByToken(token);
 	if e != 0 || user == nil {
 		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
 		return
@@ -188,6 +223,7 @@ func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlerSignUpCompany(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
@@ -223,24 +259,66 @@ func handlerSignUpCompany(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func handlerGetInfoCompany(w http.ResponseWriter, r *http.Request) {
+func handlerSignInCompany(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if err := SetUp(); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t company_get_info_struct
+	var t company_sign_struct
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for sigh up %v", err)
+		printErr(w, err)
+	}
+
+	user, e := GetCompany(t.Login);
+	if e != 0 || user == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetCompany error %d", e)))
+		return
+	}
+	if (user != nil) {
+		c, ok := user.(company_st)
+		if !ok {
+			printErr(w, errors.New("can't cast to company_st"))
+			return
+		}
+		if ok && c.Password != t.Password {
+			printErr(w, errors.New("wrong password"))
+			return
+		}
+		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_c\"}", c.ID)
+		w.Write([]byte(jsonAnswer))
+	}
+}
+
+func handlerGetInfoCompany(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t company_access
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for get compnay user %v", err)
 		printErr(w, err)
 		return
 	}
-
-	if (t.Token == 0) {
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
+		return
+	}
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+		return
+	}
+	if (token == 0) {
 		printErr(w, errors.New("token is empty"))
 		return
 	}
-	company, e := GetCompanyByToken(t.Token);
+	company, e := GetCompanyByToken(token);
 	if e != 0 || company == nil {
 		printErr(w, errors.New(fmt.Sprintf("GetCompany error %d", e)))
 		return
@@ -261,6 +339,121 @@ func handlerGetInfoCompany(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handlerAddEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t company_add_event_struct
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for get compnay user %v", err)
+		printErr(w, err)
+		return
+	}
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
+		return
+	}
+	tokenCode := t.Token[len(t.Token) - 2:]
+	if tokenCode != "_c" {
+		printErr(w, errors.New("this is not company code"))
+		return
+	}
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+		return
+	}
+	if (token == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+
+	if err := CreateEvent(company_event_st{Name:t.Name, Description:t.Description, Start_event:t.Start_event,
+		End_event:t.End_event, Token:token}); err != 0 {
+		printErr(w, errors.New("create event error %d"))
+	}
+}
+
+func handleGetAllEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t user_access
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for get compnay user %v", err)
+		printErr(w, err)
+		return
+	}
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
+		return
+	}
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+		return
+	}
+	if (token == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+
+	events, e := GetEvents();
+	if e != 0 || events == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetAllEvents error %d", e)))
+		return
+	}
+
+	if (events != nil) {
+		jsonAnswer, err := json.Marshal(events)
+		if err != nil {
+			printErr(w, err)
+			return
+		}
+		w.Write([]byte(jsonAnswer))
+	}
+}
+
+func handleGetCompanyEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t company_get_events
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for get compnay user %v", err)
+		printErr(w, err)
+		return
+	}
+
+	if (t.Company_id == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+
+	events, e := GetEventsByCompany(t.Company_id);
+	if e != 0 || events == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetAllEvents error %d", e)))
+		return
+	}
+
+	if (events != nil) {
+		jsonAnswer, err := json.Marshal(events)
+		if err != nil {
+			printErr(w, err)
+			return
+		}
+		w.Write([]byte(jsonAnswer))
+	}
+}
 
 func printErr(w http.ResponseWriter, err error) {
 	if err != nil {
@@ -275,7 +468,10 @@ func main() {
 	http.HandleFunc("/user_add_info", handlerAddUserInfo)
 	http.HandleFunc("/user_get_info", handlerGetInfoUser)
 	http.HandleFunc("/company_signup", handlerSignUpCompany)
+	http.HandleFunc("/company_signin", handlerSignInCompany)
 	http.HandleFunc("/company_get_info", handlerGetInfoCompany)
-	http.HandleFunc("/company_add_event", handlerGetInfoCompany)
+	http.HandleFunc("/company_add_event", handlerAddEvent)
+	http.HandleFunc("/get_all_events", handleGetAllEvents)
+	http.HandleFunc("/get_company_events", handleGetCompanyEvents)
 	http.ListenAndServe(":8080", nil)
 }
