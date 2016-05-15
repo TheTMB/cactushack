@@ -13,8 +13,7 @@ end_study BIGINT NOT NULL,
 age INT NOT NULL,
 work varchar(255) NOT NULL,
 known_technology varchar(255) NOT NULL,
-about varchar(255) NOT NULL,
-joinEventID int not null
+about varchar(255) NOT NULL
 );
 
 CREATE TABLE Companies
@@ -39,5 +38,12 @@ description varchar(255) NOT NULL,
 start_event BIGINT NOT NULL,
 end_event BIGINT NOT NULL,
 company_id int NOT NULL
+);
+
+CREATE TABLE UsersEvents
+(
+Id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+user_id int NOT NULL,
+event_id int NOT NULL
 );
 

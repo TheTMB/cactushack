@@ -47,6 +47,10 @@ type company_get_events struct {
 	Company_id int
 }
 
+type user_get_events struct {
+	User_id int
+}
+
 type user_join_event_st struct {
 	Token    string
 	Event_id int
@@ -136,7 +140,7 @@ func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
 			printErr(w, errors.New("wrong password"))
 			return
 		}
-		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_u\"}", u.ID)
+		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_u\", \"login\":\"%v\"}", u.ID, u.Login)
 		w.Write([]byte(jsonAnswer))
 	}
 }
@@ -175,7 +179,7 @@ func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := UpdateUser(user_st{token, "", "", t.FirstName, t.LastName, t.Country, t.City, t.University, t.Start_study, t.End_study,
-		t.Age, t.Work, t.Known_technology, t.About, 0}); err != 0 {
+		t.Age, t.Work, t.Known_technology, t.About}); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
@@ -486,26 +490,47 @@ func handleUserJoinEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, e := GetUserByToken(token);
-	if e != 0 || user == nil {
-		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
-		return
-	}
-
-	if (user != nil) {
-		u, ok := user.(user_st)
-		if !ok {
-			printErr(w, errors.New("can't cast to user_st"))
-			return
-		}
-		if err := UpdateUser(user_st{token, "", "", u.FirstName, u.LastName, u.Country, u.City, u.University, u.Start_study, u.End_study,
-			u.Age, u.Work, u.Known_technology, u.About, t.Event_id}); err != 0 {
-			printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
-			return;
-		}
+	if err := CreateUserEvent(company_user_event_st{user_id:token, event_id:t.Event_id}); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
+		return;
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func handleGetUserEvents(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t user_get_events
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for get compnay user %v", err)
+		printErr(w, err)
+		return
+	}
+
+	if (t.User_id == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+
+	events, e := GetEventsByUser(t.User_id);
+	if e != 0 || events == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetAllEvents error %d", e)))
+		return
+	}
+
+	if (events != nil) {
+		jsonAnswer, err := json.Marshal(events)
+		if err != nil {
+			printErr(w, err)
+			return
+		}
+		w.Write([]byte(jsonAnswer))
+	}
 }
 
 func printErr(w http.ResponseWriter, err error) {
@@ -527,5 +552,6 @@ func main() {
 	http.HandleFunc("/get_all_events", handleGetAllEvents)
 	http.HandleFunc("/get_company_events", handleGetCompanyEvents)
 	http.HandleFunc("/user_join_event", handleUserJoinEvent)
+	http.HandleFunc("/get_user_events", handleGetUserEvents)
 	http.ListenAndServe(":8080", nil)
 }

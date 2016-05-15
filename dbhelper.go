@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"fmt"
 	"database/sql"
+	"time"
+	"strconv"
 )
 
 var db *sql.DB;
@@ -23,7 +25,6 @@ type user_st struct {
 	Work             string
 	Known_technology string
 	About            string
-	JoinEventID	 int
 }
 
 type company_st struct {
@@ -49,6 +50,12 @@ type company_event_st struct {
 }
 
 type company_event_list_st map[string][]company_event_st
+
+type company_user_event_st struct {
+	ID       int
+	user_id  int
+	event_id int
+}
 
 func SetUp() int {
 	var err error;
@@ -88,12 +95,11 @@ func GetUser(inputLogin string) (interface{}, int) {
 		var work string
 		var known_technology string
 		var about string
-		var joinEventID int
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city,
-			&university, &start_study, &end_study, &age, &work, &known_technology, &about, &joinEventID)); st {
+			&university, &start_study, &end_study, &age, &work, &known_technology, &about)); st {
 			return nil, err
 		}
-		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about, joinEventID}, 0
+		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about}, 0
 	}
 	return nil, 0
 }
@@ -118,12 +124,11 @@ func GetUserByToken(token int) (interface{}, int) {
 		var work string
 		var known_technology string
 		var about string
-		var joinEventID int
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city,
-			&university, &start_study, &end_study, &age, &work, &known_technology, &about, &joinEventID)); st {
+			&university, &start_study, &end_study, &age, &work, &known_technology, &about)); st {
 			return nil, err
 		}
-		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about, joinEventID}, 0
+		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about}, 0
 	}
 	return nil, 0
 }
@@ -144,13 +149,13 @@ func CreateUser(user user_st) (err int) {
 
 func UpdateUser(user user_st) (err int) {
 	stmt, error := db.Prepare("update Users SET firstName=?, lastname=?, country=?, city=?, university=?, start_study=?, end_study=?," +
-	"age=?, work=?, known_technology=?, about=?, joinEventID=? where id=?")
+	"age=?, work=?, known_technology=?, about=? where id=?")
 	if st, err := checkDbErr(error); st {
 		return err;
 	}
 
 	if _, err := stmt.Exec(user.FirstName, user.LastName, user.Country, user.City, user.University, user.Start_study, user.End_study,
-		user.Age, user.Work, user.Known_technology, user.About, user.JoinEventID, user.ID); err != nil {
+		user.Age, user.Work, user.Known_technology, user.About, user.ID); err != nil {
 		if st, e := checkDbErr(err); st {
 			return e
 		}
@@ -270,7 +275,8 @@ func GetEventsByCompany(token int) (company_event_list_st, int) {
 	if st, err := checkDbErr(err); st {
 		return nil, err
 	}
-	var results []company_event_st
+	var results_old []company_event_st
+	var results_new []company_event_st
 	for rows.Next() {
 		var ID int
 		var name string
@@ -281,11 +287,90 @@ func GetEventsByCompany(token int) (company_event_list_st, int) {
 		if st, err := checkDbErr(rows.Scan(&ID, &name, &description, &start_event, &end_event, &company_id)); st {
 			return nil, err
 		}
-		results = append(results, company_event_st{ID, name, description, start_event, end_event, company_id})
+		ev := company_event_st{ID, name, description, start_event, end_event, company_id}
+		t := time.Now()
+		format := t.Format("20060102150405")
+		f, err := strconv.ParseInt(format, 10, 64)
+		if err != nil {
+			fmt.Printf("err convert to int %v", err)
+		}
+		if (f > end_event) {
+			results_old = append(results_old, ev)
+		} else {
+			results_new = append(results_new, ev)
+		}
 	}
-	if len(results) > 0 {
+	if len(results_old) > 0 || len(results_new) > 0 {
 		jsonFormatRes := company_event_list_st{
-			"events":results,
+			"events_old":results_old,
+			"events_new":results_new,
+		}
+		return jsonFormatRes, 0
+	}
+	return nil, 0
+}
+
+func CreateUserEvent(event company_user_event_st) (err int) {
+	stmt, error := db.Prepare("insert UsersEvents SET event_id=?, user_id=?");
+	if st, err := checkDbErr(error); st {
+		return err;
+	}
+
+	if _, err := stmt.Exec(event.event_id, event.user_id); err != nil {
+		if st, e := checkDbErr(err); st {
+			return e
+		}
+	}
+	return 0
+}
+
+func GetEventsByUser(token int) (company_event_list_st, int) {
+
+	rows, err := db.Query("SELECT event_id FROM UsersEvents where user_id=?", token)
+	if st, err := checkDbErr(err); st {
+		return nil, err
+	}
+	var results_old []company_event_st
+	var results_new []company_event_st
+	for rows.Next() {
+		var event_ID int
+		if st, err := checkDbErr(rows.Scan(&event_ID)); st {
+			return nil, err
+		}
+
+		rows, err := db.Query("SELECT * FROM Events where Id=?", event_ID)
+		if st, err := checkDbErr(err); st {
+			return nil, err
+		}
+		if rows.Next() {
+			var ID int
+			var name string
+			var description string
+			var start_event int64
+			var end_event int64
+			var company_id int
+			if st, err := checkDbErr(rows.Scan(&ID, &name, &description, &start_event, &end_event, &company_id)); st {
+				return nil, err
+			}
+			ev := company_event_st{ID, name, description, start_event, end_event, company_id}
+			t := time.Now()
+			format := t.Format("20060102150405")
+			f, err := strconv.ParseInt(format, 10, 64)
+			if err != nil {
+				fmt.Printf("err convert to int %v", err)
+			}
+			if (f > end_event) {
+				results_old = append(results_old, ev)
+			} else {
+				results_new = append(results_new, ev)
+			}
+		}
+	}
+
+	if len(results_old) > 0 || len(results_new) > 0 {
+		jsonFormatRes := company_event_list_st{
+			"events_old":results_old,
+			"events_new":results_new,
 		}
 		return jsonFormatRes, 0
 	}
