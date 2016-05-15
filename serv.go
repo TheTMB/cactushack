@@ -47,6 +47,11 @@ type company_get_events struct {
 	Company_id int
 }
 
+type user_join_event_st struct {
+	Token    string
+	Event_id int
+}
+
 type company_sign_up_struct struct {
 	ID                  int
 	Login               string
@@ -170,7 +175,7 @@ func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := UpdateUser(user_st{token, "", "", t.FirstName, t.LastName, t.Country, t.City, t.University, t.Start_study, t.End_study,
-		t.Age, t.Work, t.Known_technology, t.About}); err != 0 {
+		t.Age, t.Work, t.Known_technology, t.About, 0}); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
@@ -455,6 +460,54 @@ func handleGetCompanyEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleUserJoinEvent(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := SetUp(); err != 0 {
+		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
+	}
+	decoder := json.NewDecoder(r.Body)
+	var t user_join_event_st
+	err := decoder.Decode(&t)
+	if err != nil {
+		fmt.Printf("error parse json for sigh up %v", err)
+		printErr(w, err)
+	}
+	if t.Token == "" || len(t.Token) < 3 {
+		printErr(w, errors.New("token less than 3 symbols"))
+		return
+	}
+	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
+	if err != nil {
+		printErr(w, errors.New("token is not int"))
+		return
+	}
+	if (token == 0) {
+		printErr(w, errors.New("token is empty"))
+		return
+	}
+
+	user, e := GetUserByToken(token);
+	if e != 0 || user == nil {
+		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
+		return
+	}
+
+	if (user != nil) {
+		u, ok := user.(user_st)
+		if !ok {
+			printErr(w, errors.New("can't cast to user_st"))
+			return
+		}
+		if err := UpdateUser(user_st{token, "", "", u.FirstName, u.LastName, u.Country, u.City, u.University, u.Start_study, u.End_study,
+			u.Age, u.Work, u.Known_technology, u.About, t.Event_id}); err != 0 {
+			printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
+			return;
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func printErr(w http.ResponseWriter, err error) {
 	if err != nil {
 		fmt.Printf("err with db: %v \n", err)
@@ -473,5 +526,6 @@ func main() {
 	http.HandleFunc("/company_add_event", handlerAddEvent)
 	http.HandleFunc("/get_all_events", handleGetAllEvents)
 	http.HandleFunc("/get_company_events", handleGetCompanyEvents)
+	http.HandleFunc("/user_join_event", handleUserJoinEvent)
 	http.ListenAndServe(":8080", nil)
 }

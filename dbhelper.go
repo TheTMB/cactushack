@@ -23,6 +23,7 @@ type user_st struct {
 	Work             string
 	Known_technology string
 	About            string
+	JoinEventID	 int
 }
 
 type company_st struct {
@@ -87,11 +88,12 @@ func GetUser(inputLogin string) (interface{}, int) {
 		var work string
 		var known_technology string
 		var about string
+		var joinEventID int
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city,
-			&university, &start_study, &end_study, &age, &work, &known_technology, &about)); st {
+			&university, &start_study, &end_study, &age, &work, &known_technology, &about, &joinEventID)); st {
 			return nil, err
 		}
-		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about}, 0
+		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about, joinEventID}, 0
 	}
 	return nil, 0
 }
@@ -116,11 +118,12 @@ func GetUserByToken(token int) (interface{}, int) {
 		var work string
 		var known_technology string
 		var about string
+		var joinEventID int
 		if st, err := checkDbErr(rows.Scan(&ID, &login, &password, &firstName, &lastName, &country, &city,
-			&university, &start_study, &end_study, &age, &work, &known_technology, &about)); st {
+			&university, &start_study, &end_study, &age, &work, &known_technology, &about, &joinEventID)); st {
 			return nil, err
 		}
-		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about}, 0
+		return user_st{ID, login, password, firstName, lastName, country, city, university, start_study, end_study, age, work, known_technology, about, joinEventID}, 0
 	}
 	return nil, 0
 }
@@ -141,13 +144,13 @@ func CreateUser(user user_st) (err int) {
 
 func UpdateUser(user user_st) (err int) {
 	stmt, error := db.Prepare("update Users SET firstName=?, lastname=?, country=?, city=?, university=?, start_study=?, end_study=?," +
-	"age=?, work=?, known_technology=?, about=? where id=?")
+	"age=?, work=?, known_technology=?, about=?, joinEventID=? where id=?")
 	if st, err := checkDbErr(error); st {
 		return err;
 	}
 
 	if _, err := stmt.Exec(user.FirstName, user.LastName, user.Country, user.City, user.University, user.Start_study, user.End_study,
-		user.Age, user.Work, user.Known_technology, user.About, user.ID); err != nil {
+		user.Age, user.Work, user.Known_technology, user.About, user.JoinEventID, user.ID); err != nil {
 		if st, e := checkDbErr(err); st {
 			return e
 		}

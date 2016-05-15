@@ -13,7 +13,8 @@ end_study BIGINT NOT NULL,
 age INT NOT NULL,
 work varchar(255) NOT NULL,
 known_technology varchar(255) NOT NULL,
-about varchar(255) NOT NULL
+about varchar(255) NOT NULL,
+joinEventID int not null
 );
 
 CREATE TABLE Companies
