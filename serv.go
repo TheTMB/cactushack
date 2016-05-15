@@ -10,18 +10,14 @@ import (
 	"strconv"
 )
 
-type user_sign_struct struct {
+type user_sign_in_struct struct {
 	Login    string
 	Password string
 }
 
-type company_sign_struct struct {
-	Login    string
-	Password string
-}
-
-type user_add_info_struct struct {
-	Token            string
+type user_sign_up_struct struct {
+	Login            string
+	Password         string
 	FirstName        string
 	LastName         string
 	Country          string
@@ -33,6 +29,11 @@ type user_add_info_struct struct {
 	Work             string
 	Known_technology string
 	About            string
+}
+
+type company_sign_struct struct {
+	Login    string
+	Password string
 }
 
 type user_access struct {
@@ -84,7 +85,7 @@ func handlerSignUpUser(w http.ResponseWriter, r *http.Request) {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t user_sign_struct
+	var t user_sign_up_struct
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
@@ -106,7 +107,9 @@ func handlerSignUpUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := CreateUser(user_st{Login:t.Login, Password:t.Password}); err != 0 {
+	if err := CreateUser(user_st{Login:t.Login, Password:t.Password, FirstName:t.FirstName, LastName:t.LastName, Country:t.Country,
+		City:t.City, University:t.University, Start_study:t.Start_study, End_study:t.End_study, Age:t.Age, Work:t.Work, Known_technology:t.Known_technology,
+		About:t.About}); err != 0 {
 		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
 		return;
 	}
@@ -137,7 +140,7 @@ func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
 		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
 	}
 	decoder := json.NewDecoder(r.Body)
-	var t user_sign_struct
+	var t user_sign_in_struct
 	err := decoder.Decode(&t)
 	if err != nil {
 		fmt.Printf("error parse json for sigh up %v", err)
@@ -162,48 +165,6 @@ func handlerSignInUser(w http.ResponseWriter, r *http.Request) {
 		jsonAnswer := fmt.Sprintf("{\"token\":\"%v_u\", \"login\":\"%v\"}", u.ID, u.Login)
 		w.Write([]byte(jsonAnswer))
 	}
-}
-
-func handlerAddUserInfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	if err := SetUp(); err != 0 {
-		printErr(w, errors.New(fmt.Sprintf("cannot setUp db %d", err)))
-	}
-	decoder := json.NewDecoder(r.Body)
-	var t user_add_info_struct
-	err := decoder.Decode(&t)
-	if err != nil {
-		fmt.Printf("error parse json for sigh up %v", err)
-		printErr(w, err)
-	}
-
-	if t.Token == "" || len(t.Token) < 3 {
-		printErr(w, errors.New("token less than 3 symbols"))
-		return
-	}
-	token, err := strconv.Atoi(t.Token[:len(t.Token) - 2])
-	if err != nil {
-		printErr(w, errors.New("token is not int"))
-		return
-	}
-	if (token == 0) {
-		printErr(w, errors.New("token is empty"))
-		return
-	}
-
-	user, e := GetUserByToken(token);
-	if e != 0 || user == nil {
-		printErr(w, errors.New(fmt.Sprintf("GetUser error %d", e)))
-		return
-	}
-
-	if err := UpdateUser(user_st{token, "", "", t.FirstName, t.LastName, t.Country, t.City, t.University, t.Start_study, t.End_study,
-		t.Age, t.Work, t.Known_technology, t.About}); err != 0 {
-		printErr(w, errors.New(fmt.Sprintf("create user error %d", err)))
-		return;
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func handlerGetInfoUser(w http.ResponseWriter, r *http.Request) {
@@ -562,7 +523,6 @@ func printErr(w http.ResponseWriter, err error) {
 func main() {
 	http.HandleFunc("/user_signup", handlerSignUpUser)
 	http.HandleFunc("/user_signin", handlerSignInUser)
-	http.HandleFunc("/user_add_info", handlerAddUserInfo)
 	http.HandleFunc("/user_get_info", handlerGetInfoUser)
 	http.HandleFunc("/company_signup", handlerSignUpCompany)
 	http.HandleFunc("/company_signin", handlerSignInCompany)
